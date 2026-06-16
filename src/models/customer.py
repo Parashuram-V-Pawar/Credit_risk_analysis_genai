@@ -1,9 +1,8 @@
-from pydantic import BaseModel
-from pydantic import EmailStr
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator, EmailStr
 
 
 class Customer(BaseModel):
+    customer_id: str
     customer_name: str
     gender: str
     age: int
