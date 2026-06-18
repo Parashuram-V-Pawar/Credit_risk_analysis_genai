@@ -1,68 +1,69 @@
 import joblib
+import pandas as pd
 
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
 
 from src.ml.data_loader import load_credit_training_data
-from src.ml.utils import remove_new_to_credit_customers
 from src.ml.feature_engineering import create_features, get_credit_score_features
 
-# Load data
-df = load_credit_training_data()
-numeric_cols = df.select_dtypes(
-    include=["int64", "float64"]
-).columns
 
-# Create new features(Feature Engineering)
+# =========================
+# 1. LOAD DATA
+# =========================
+df = load_credit_training_data()
+
+# =========================
+# 2. FEATURE ENGINEERING (MUST COME FIRST)
+# =========================
 df = create_features(df)
 
-# Remove new customers from dataset
-df = remove_new_to_credit_customers(df)
+# =========================
+# 3. VERIFY FEATURES EXIST (DEBUG STEP)
+# =========================
+required_features = get_credit_score_features()
 
-# Define x and y
-features = get_credit_score_features()
-X = df[features]
+missing = [f for f in required_features if f not in df.columns]
+
+if missing:
+    raise ValueError(f"Missing features in dataset: {missing}")
+
+# =========================
+# 4. SPLIT X / Y
+# =========================
+X = df[required_features].copy()
 y = df["cibil_score"]
 
-# defining categorical columns
+# =========================
+# 5. CATEGORICAL FEATURES
+# =========================
 categorical_features = [
     "gender", "married", "education",
     "occupation", "employment_status",
-    "business_type","organization_type"
+    "business_type", "organization_type"
 ]
 
-# defining numerical columns
-numerical_features = [feature
-                     for feature in features
-                     if feature not in categorical_features
-                    ]
+categorical_features = [c for c in categorical_features if c in X.columns]
 
-# Preprocessing dataset to normalize all columns
+numerical_features = [c for c in X.columns if c not in categorical_features]
+
+# =========================
+# 6. PREPROCESSOR
+# =========================
 preprocessor = ColumnTransformer(
     transformers=[
-        (
-            "categorical",
-            OneHotEncoder(
-                handle_unknown="ignore"
-            ),
-            categorical_features
-        ),
-        (
-            "numerical",
-            "passthrough",
-            numerical_features
-        )
+        ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_features),
+        ("num", "passthrough", numerical_features)
     ]
 )
 
-# Split dataset for training and testing
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42)
-
-# create model
+# =========================
+# 7. MODEL
+# =========================
 model = RandomForestRegressor(
     n_estimators=200,
     max_depth=10,
@@ -70,28 +71,36 @@ model = RandomForestRegressor(
     n_jobs=-1
 )
 
-# Pipeline
-pipeline = Pipeline(
-    steps=[
-        ("preprocessor", preprocessor),
-        ("model", model)
-    ]
+pipeline = Pipeline([
+    ("preprocessor", preprocessor),
+    ("model", model)
+])
+
+# =========================
+# 8. TRAIN TEST SPLIT
+# =========================
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42
 )
 
-# Training the model
+# =========================
+# 9. TRAIN
+# =========================
 pipeline.fit(X_train, y_train)
 
-# Testing model on testing data
-predictions = pipeline.predict(X_test)
+# =========================
+# 10. EVALUATE
+# =========================
+pred = pipeline.predict(X_test)
 
-# Evaluating model performance
-mae = mean_absolute_error(y_test, predictions)
-r2 = r2_score(y_test, predictions)
+print("MAE:", mean_absolute_error(y_test, pred))
+print("R2:", r2_score(y_test, pred))
 
-print(f"MAE : {mae:.2f}")
-print(f"R²  : {r2:.4f}")
+# =========================
+# 11. SAVE
+# =========================
+joblib.dump(pipeline, "src/ml/models/credit_score_model.pkl")
 
-joblib.dump(
-    pipeline,
-    "src/ml/models/credit_score_model.pkl"
-)
+print("Model saved successfully")
