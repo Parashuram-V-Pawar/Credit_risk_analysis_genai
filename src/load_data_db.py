@@ -9,7 +9,7 @@ def load_data():
     logging.info("Inserting data into database...")
 
     logging.info("Loading data")
-    df = pd.read_csv("./dataset/processed/cleaned_dataset.csv")
+    df = pd.read_csv("./dataset/HDFC_CreditRisk_10000_Customers.csv")
     logging.info("Data loaded")
 
     try:
