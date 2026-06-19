@@ -1,0 +1,30 @@
+PERSONAL LOAN POLICY
+
+Eligibility Rules:
+
+1. Minimum monthly income: 25000
+2. Minimum CIBIL Score: 680
+3. Employment stability required
+4. Existing EMI burden below 45%
+
+Approval Guidelines:
+
+* Income above 100000:
+  Premium segment
+
+* Income between 50000 and 100000:
+  Standard segment
+
+* Income below 50000:
+  High review segment
+
+Rejection Conditions:
+
+* CIBIL below 600
+* More than 3 previous defaults
+* Debt to income ratio above 70%
+* Disposable income below 10000
+
+Risk Notes:
+
+Personal loans carry higher risk than secured loans and require stricter underwriting.

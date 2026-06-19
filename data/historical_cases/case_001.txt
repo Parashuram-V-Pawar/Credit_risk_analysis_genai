@@ -1,0 +1,27 @@
+CASE ID: CASE001
+
+Customer Profile
+
+Age: 35
+Occupation: Software Engineer
+
+Annual Income: 1500000
+Loan Amount: 1200000
+
+CIBIL Score: 790
+
+Previous Loans: 2
+Defaults: 0
+
+Debt To Income Ratio: 22%
+
+Decision:
+APPROVED
+
+Reason:
+
+Strong credit profile.
+Excellent repayment history.
+High disposable income.
+Low debt burden.
+Stable employment.

@@ -1,0 +1,40 @@
+RISK CLASSIFICATION GUIDELINES
+
+LOW RISK
+
+Conditions:
+
+* CIBIL above 750
+* No defaults
+* Debt to income ratio below 30%
+* Stable employment
+
+Recommended Action:
+Approve
+
+---
+
+MEDIUM RISK
+
+Conditions:
+
+* CIBIL between 650 and 750
+* One previous default
+* Debt to income ratio between 30% and 50%
+
+Recommended Action:
+Conditional Approval
+
+---
+
+HIGH RISK
+
+Conditions:
+
+* CIBIL below 650
+* Multiple defaults
+* Debt to income ratio above 50%
+* Unstable employment
+
+Recommended Action:
+Reject or Manual Review

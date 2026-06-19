@@ -1,0 +1,26 @@
+CASE ID: CASE002
+
+Customer Profile
+
+Age: 42
+Occupation: Business Owner
+
+Annual Income: 900000
+Loan Amount: 1800000
+
+CIBIL Score: 670
+
+Previous Loans: 4
+Defaults: 1
+
+Debt To Income Ratio: 47%
+
+Decision:
+CONDITIONAL APPROVAL
+
+Reason:
+
+Moderate credit profile.
+One historical default.
+Debt ratio near policy threshold.
+Additional verification requested.

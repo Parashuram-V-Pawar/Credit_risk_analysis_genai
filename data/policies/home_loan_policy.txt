@@ -1,0 +1,36 @@
+HOME LOAN POLICY
+
+Eligibility Rules:
+
+1. Minimum Age: 21 years
+2. Maximum Age at Loan Maturity: 70 years
+3. Minimum CIBIL Score: 650
+4. Debt to Income Ratio should be below 50%
+5. Stable employment history preferred
+6. Minimum employment length: 1 year
+
+Approval Guidelines:
+
+* CIBIL above 750:
+  Preferred customer category
+
+* CIBIL 700 to 750:
+  Standard approval category
+
+* CIBIL 650 to 699:
+  Conditional approval category
+
+* CIBIL below 650:
+  Manual review required
+
+Risk Indicators:
+
+* More than 2 loan defaults
+* Debt to income ratio above 60%
+* Frequent loan enquiries
+* Low disposable income
+
+Collateral Benefits:
+
+* Property ownership improves approval probability
+* High asset value reduces risk classification

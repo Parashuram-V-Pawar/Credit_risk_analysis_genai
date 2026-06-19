@@ -1,0 +1,28 @@
+CASE ID: CASE003
+
+Customer Profile
+
+Age: 29
+Occupation: Self Employed
+
+Annual Income: 450000
+Loan Amount: 1400000
+
+CIBIL Score: 580
+
+Previous Loans: 3
+Defaults: 3
+
+Debt To Income Ratio: 72%
+
+Decision:
+REJECTED
+
+Reason:
+
+Poor credit score.
+Multiple historical defaults.
+Very high debt burden.
+Insufficient disposable income.
+
+Customer categorized as high risk.
