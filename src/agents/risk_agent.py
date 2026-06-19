@@ -11,7 +11,8 @@ class RiskAgent:
         self,
         default_probability,
         risk_level,
-        customer_data
+        customer_data,
+        rag_context=None
     ):
 
         prompt = f"""

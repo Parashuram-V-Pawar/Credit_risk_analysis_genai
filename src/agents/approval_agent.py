@@ -10,7 +10,8 @@ class ApprovalAgent:
     def analyze(
         self,
         approval_probability,
-        customer_data
+        customer_data,
+        rag_context=None
     ):
 
         prompt = f"""
