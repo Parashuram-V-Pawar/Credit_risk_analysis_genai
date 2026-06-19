@@ -16,23 +16,25 @@ class CreditInvestigationEngine:
     def __init__(self):
 
         # =========================
-        # LAZY MODELS (IMPORTANT FIX)
+        # LAZY MODELS
         # =========================
         self._approval_model = None
         self._default_model = None
+        self._rag_engine = None
 
-        # Agents (safe lightweight objects)
+        # =========================
+        # AGENTS
+        # =========================
         self.approval_agent = ApprovalAgent()
         self.risk_agent = RiskAgent()
         self.coordinator_agent = CoordinatorAgent()
         self.history_agent = HistoryAgent()
 
-        # Core components
+        # =========================
+        # CORE COMPONENTS
+        # =========================
         self.risk_engine = RiskEngine()
         self.normalizer = DataNormalizer()
-
-        # ⚠️ DO NOT INITIALIZE HEAVY RAG HERE
-        self._rag_engine = None
 
     # =========================
     # MODEL LOADERS (LAZY)
@@ -53,7 +55,11 @@ class CreditInvestigationEngine:
 
     def get_rag_engine(self):
         if self._rag_engine is None:
-            self._rag_engine = RAGEngine()
+            try:
+                self._rag_engine = RAGEngine()
+            except Exception as e:
+                print(f"RAG Initialization Failed: {e}")
+                self._rag_engine = False
         return self._rag_engine
 
     # =========================
@@ -129,17 +135,51 @@ class CreditInvestigationEngine:
             final_decision = "APPROVED"
 
         # =========================
+        # RAG RETRIEVAL
+        # =========================
+        rag_context = []
+        policy_context = []
+
+        rag = self.get_rag_engine()
+
+        if rag:
+
+            query = f"""
+            CIBIL Score: {df['cibil_score'].iloc[0]}
+            Annual Income: {df['annual_household_income'].iloc[0]}
+            Loan Amount: {df['loan_amount'].iloc[0]}
+            Defaults: {df['default_history_count'].iloc[0]}
+            Previous Loans: {df['number_of_previous_loans'].iloc[0]}
+            Debt Ratio: {df['debt_to_income_ratio'].iloc[0]}
+            Risk Level: {risk_level}
+            """
+
+            try:
+                rag_context = rag.retrieve(query)
+
+                print("\nRAG RESULTS")
+                print("=" * 50)
+
+                for doc in rag_context:
+                    print(doc[:200])
+
+            except Exception as e:
+                print("RAG ERROR:", e)
+
+        # =========================
         # AGENTS
         # =========================
         approval_text = self.approval_agent.analyze(
             approval_prob,
-            engineered_data
+            engineered_data,
+            rag_context
         )
 
         risk_text = self.risk_agent.analyze(
             default_prob,
             risk_level,
-            input_data
+            input_data,
+            rag_context
         )
 
         history_analysis = self.history_agent.analyze(input_data)
@@ -148,7 +188,8 @@ class CreditInvestigationEngine:
             approval_text,
             risk_text,
             history_analysis,
-            final_decision
+            final_decision,
+            rag_context
         )
 
         # =========================
@@ -166,8 +207,8 @@ class CreditInvestigationEngine:
             "approval_analysis": approval_text,
             "risk_analysis": risk_text,
             "history_analysis": history_analysis,
-            "final_report": final_report,
 
-            "rag_context": rag_context,
-            "policy_context": policy_context
+            "similar_cases": rag_context,
+
+            "final_report": final_report
         }
