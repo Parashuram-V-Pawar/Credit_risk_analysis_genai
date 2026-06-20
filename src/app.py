@@ -1,8 +1,14 @@
 import streamlit as st
 import pandas as pd
 
+from pydantic import ValidationError
+
 from src.core.investigation_engine import CreditInvestigationEngine
 from src.core.customer_service import CustomerService
+from src.models.phone_validator import PhoneRequest
+from src.models.new_customer import NewCustomerLoanRequest
+from src.models.existing_customer import ExistingCustomerLoanRequest
+
 
 # =========================
 # SAFE LAZY SINGLETON INIT
@@ -19,16 +25,15 @@ def get_customer_service():
 # =========================
 # UI HEADER
 # =========================
-st.title("🏦 Credit Risk Investigation Platform")
-st.caption(
-    "AI-Powered Loan Approval, Risk Assessment & Investigation"
-)
-
 st.set_page_config(
     page_title="Credit Risk Investigation",
     page_icon="🏦",
     layout="wide"
 )
+
+st.title("🏦 Credit Risk Investigation Platform")
+st.caption("AI-Powered Loan Approval, Risk Assessment & Investigation")
+
 # =========================
 # NEW CUSTOMER RESULT DASHBOARD
 # =========================
@@ -56,39 +61,35 @@ def show_result_dashboard(result):
     decision = result["final_decision"]
 
     if decision == "APPROVED":
-        st.success(f"✅ FINAL DECISION: {decision}")
+        st.success("✅ LOAN APPROVED")
+
     elif decision == "CONDITIONAL_APPROVAL":
-        st.warning(f"⚠️ FINAL DECISION: {decision}")
+        st.warning("⚠️ CONDITIONAL APPROVAL")
+        if result.get("conditions"):
+            st.subheader("Required Conditions")
+            for condition in result["conditions"]:
+                st.write(f"• {condition}")
+
     else:
-        st.error(f"❌ FINAL DECISION: {decision}")
+        st.error("❌ LOAN REJECTED")
     st.divider()
 
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "Approval Analysis",
-        "Risk Analysis",
-        "History Analysis",
-        "Final Report"
-    ])
+    st.subheader("📄 Credit Investigation Report")
 
-    with tab1:
-        st.write(result["approval_analysis"])
-    with tab2:
-        st.write(result["risk_analysis"])
-    with tab3:
-        st.write(result["history_analysis"])
-    with tab4:
-        st.markdown(result["final_report"])
+    st.markdown(
+        result["final_report"]
+    )
 
-    if result.get("similar_cases"):
-        st.divider()
-        st.subheader("📚 Similar Historical Cases")
+    # if result.get("similar_cases"):
+    #     st.divider()
+    #     st.subheader("📚 Similar Historical Cases")
 
-        for idx, case in enumerate(
-            result["similar_cases"],
-            start=1
-        ):
-            with st.expander(f"Case {idx}"):
-                st.text(case)
+    #     for idx, case in enumerate(
+    #         result["similar_cases"],
+    #         start=1
+    #     ):
+    #         with st.expander(f"Case {idx}"):
+    #             st.text(case)
 
     if result.get("policy_context"):
         st.divider()
@@ -107,12 +108,25 @@ def show_result_dashboard(result):
 # =========================
 # STEP 1: PHONE INPUT
 # =========================
-phone = st.text_input("Enter Customer Mobile Number")
+phone = st.text_input(
+    "Enter Customer Mobile Number",
+    placeholder="Enter 10-digit mobile number"
+)
 customer_data = None
 is_existing = False
 
 customer_service = get_customer_service()
 engine = get_engine()
+
+if phone:
+    try:
+        validated_phone = PhoneRequest(phone=phone)
+        phone = validated_phone.phone
+
+    except ValidationError as e:
+        for error in e.errors():
+            st.error(error["msg"])
+        st.stop()
 
 if phone:
     try:
@@ -123,7 +137,8 @@ if phone:
             customer_data = customer_service.get_customer_by_phone(phone)
             is_existing = True
 
-            st.subheader("Customer Profile")
+            st.subheader(f"👤 {customer_data['customer_name']}")
+
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Customer ID", customer_data.get("customer_id", "-"))
@@ -169,7 +184,6 @@ if phone:
 # STEP 2A: EXISTING CUSTOMER
 # =========================
 if phone and is_existing:
-
     st.subheader("Loan Evaluation (Existing Customer)")
     st.subheader("🏦 Loan Request Details")
 
@@ -191,24 +205,40 @@ if phone and is_existing:
             f"**Previous Loans:** {customer_data['number_of_previous_loans']}"
         )
 
-    loan_amount = st.number_input("Loan Amount", 0.0, 1e7, 500000.0)
+    loan_amount = st.number_input("Loan Amount", 1000.0, 1e7, 500000.0)
     loan_term_months = st.number_input("Loan Term (Months)", 6, 360, 60)
     purpose_of_loan = st.text_input("Purpose of Loan", "Home")
     property_area = st.text_input("Property Area", "Urban")
 
-    if st.button("Evaluate Loan"):
-
-        input_data = dict(customer_data)
-        input_data.update({
-            "loan_amount": loan_amount,
-            "loan_term_months": loan_term_months,
-            "purpose_of_loan": purpose_of_loan,
-            "property_area": property_area
-        })
+    if st.button("Evaluate Loan", key="existing_customer_eval"):
 
         try:
-            result = engine.evaluate_customer(input_data)
+            validated_request = ExistingCustomerLoanRequest(
+                customer_id=customer_data["customer_id"],
+                loan_amount=loan_amount,
+                loan_term_months=loan_term_months,
+                purpose_of_loan=purpose_of_loan,
+                property_area=property_area
+            )
 
+        except ValidationError as e:
+            for error in e.errors():
+                st.error(
+                    f"{error['loc'][0]}: {error['msg']}"
+                )
+            st.stop()
+
+        input_data = dict(customer_data)
+        
+        input_data.update(
+            validated_request.model_dump()
+        )
+        
+        try:
+            with st.spinner("Running credit investigation..."):
+                result = engine.evaluate_customer(input_data)
+                loan_id = customer_service.create_loan_application(customer_data["customer_id"], 
+                                                                   input_data, result)
             show_result_dashboard(result)
 
         except Exception as e:
@@ -219,77 +249,178 @@ if phone and is_existing:
 # STEP 2B: NEW CUSTOMER
 # =========================
 elif phone and not is_existing:
-
     with st.form("new_customer_form"):
 
-        customer_name = st.text_input("Customer Name")
-        age = st.number_input("Age", 18, 100, 30)
-        gender = st.selectbox("Gender", ["Male", "Female"])
-        married = st.selectbox("Married", ["Yes", "No"])
-        education = st.selectbox("Education", ["Graduate", "Not Graduate"])
-        occupation = st.text_input("Occupation", "Salaried")
+        customer_name = st.text_input(
+            "Customer Name *",
+            placeholder="Enter full name"
+        )
 
-        employment_status = st.text_input("Employment Status", "Employed")
+        phone_number = st.text_input(
+            "Phone Number *",
+            value=phone,
+            placeholder="10-digit mobile number"
+        )
+        
+        age = st.number_input("Age", 18, 100, 30)
+
+        gender = st.selectbox(
+            "Gender *",
+            ["Select Gender", "Male", "Female"]
+        )
+        
+
+        married = st.selectbox(
+            "Marital Status *",
+            ["Select", "Yes", "No"]
+        )
+
+        education = st.selectbox(
+            "Education *",
+            ["Select", "Graduate", "Not Graduate"]
+        )
+
+        occupation = st.text_input(
+            "Occupation *",
+            placeholder="e.g. Software Engineer"
+        )
+
+        employment_status = st.text_input(
+            "Employment Status *",
+            placeholder="e.g. Employed, Self-Employed"
+        )
         employment_length_years = st.number_input("Employment Length", 0.0, 40.0, 5.0)
 
-        business_type = st.text_input("Business Type", "N/A")
-        organization_type = st.text_input("Organization Type", "Private")
+        business_type = st.text_input(
+            "Business Type",
+            placeholder="Optional (e.g. Retail, Agriculture)"
+        )
 
-        applicant_income = st.number_input("Applicant Income", 0.0, 1e7, 50000.0)
-        coapplicant_income = st.number_input("Co-applicant Income", 0.0, 1e7, 0.0)
-        annual_household_income = st.number_input("Household Income", 0.0, 1e7, 600000.0)
-        monthly_expense = st.number_input("Monthly Expense", 0.0, 1e6, 20000.0)
+        organization_type = st.text_input(
+            "Organization Type *",
+            placeholder="e.g. Private, Government"
+        )
 
-        asset_value = st.number_input("Asset Value", 0.0, 1e8, 1000000.0)
-        existing_emis = st.number_input("Existing EMIs", 0.0, 1e6, 5000.0)
+        applicant_income = st.number_input(
+            "Applicant Income *",
+            min_value=0.0,
+            placeholder="Enter anual income"
+        )
+        
+        coapplicant_income = st.number_input(
+            "Co-applicant Income",
+            min_value=0.0,
+            value=0.0
+        )
 
-        loan_amount = st.number_input("Loan Amount", 0.0, 1e7, 500000.0)
-        loan_term_months = st.number_input("Loan Term", 6, 360, 60)
-        purpose_of_loan = st.text_input("Purpose", "Home")
-        property_area = st.text_input("Property Area", "Urban")
+        annual_household_income = st.number_input(
+            "Annual Household Income *",
+            min_value=0.0,
+            value=0.0
+        )
 
-        submit = st.form_submit_button("Evaluate")
+        monthly_expense = st.number_input(
+            "Monthly Expense *",
+            min_value=0.0,
+            value=0.0
+        )
+
+        asset_value = st.number_input(
+            "Asset Value",
+            min_value=0.0,
+            value=0.0
+        )
+
+        existing_emis = st.number_input(
+            "Existing EMIs",
+            min_value=0.0,
+            value=0.0
+        )
+
+        loan_amount = st.number_input(
+            "Loan Amount *",
+            min_value=1000.0,
+            max_value=100000000.0,
+            value=1000.0
+        )
+
+        loan_term_months = st.number_input(
+            "Loan Term (Months) *",
+            min_value=6,
+            max_value=360,
+            value=6
+        )
+
+        purpose_of_loan = st.text_input(
+            "Purpose of Loan *",
+            placeholder="e.g. Home Purchase"
+        )
+
+        property_area = st.text_input(
+            "Property Area *",
+            placeholder="e.g. Urban, Rural, Semi-Urban"
+        )
+
+        submit = st.form_submit_button("Evaluate", use_container_width=True)
 
         if submit:
 
-            input_data = {
-                "customer_name": customer_name,
-                "age": age,
-                "gender": gender,
-                "married": married,
-                "education": education,
-                "occupation": occupation,
+            try:
+                validated_data = NewCustomerLoanRequest(
+                    customer_name=customer_name,
+                    phone_number=phone_number,
+                    age=age,
+                    gender=gender,
+                    married=married,
+                    education=education,
+                    occupation=occupation,
+                    employment_status=employment_status,
+                    employment_length_years=employment_length_years,
+                    business_type=business_type,
+                    organization_type=organization_type,
+                    applicant_income=applicant_income,
+                    coapplicant_income=coapplicant_income,
+                    annual_household_income=annual_household_income,
+                    monthly_expense=monthly_expense,
+                    asset_value=asset_value,
+                    existing_emis=existing_emis,
+                    loan_amount=loan_amount,
+                    loan_term_months=loan_term_months,
+                    purpose_of_loan=purpose_of_loan,
+                    property_area=property_area
+                )
 
-                "employment_status": employment_status,
-                "employment_length_years": employment_length_years,
-                "business_type": business_type,
-                "organization_type": organization_type,
+            except ValidationError as e:
+                for error in e.errors():
+                    st.error(
+                        f"{error['loc'][0]}: {error['msg']}"
+                    )
+                st.stop()
+                
+            input_data = validated_data.model_dump()
 
-                "applicant_income": applicant_income,
-                "coapplicant_income": coapplicant_income,
-                "annual_household_income": annual_household_income,
-                "monthly_expense": monthly_expense,
-                "asset_value": asset_value,
-                "existing_emis": existing_emis,
-
-                # NTC defaults
+            input_data.update({
                 "is_new_customer": True,
                 "cibil_score": 650,
                 "credit_history": 0,
                 "default_history_count": 0,
-                "number_of_previous_loans": 0,
+                "number_of_previous_loans": 0
+            })
 
-                "loan_amount": loan_amount,
-                "loan_term_months": loan_term_months,
-                "purpose_of_loan": purpose_of_loan,
-                "property_area": property_area
-            }
-
-            
             try:
-                result = engine.evaluate_customer(input_data)
+                with st.spinner("Running credit investigation..."):
+                    result = engine.evaluate_customer(input_data)
 
+                    customer_id = customer_service.create_new_customer(input_data)
+                    loan_id = customer_service.create_loan_application(customer_id, input_data, 
+                                                                       result)
                 show_result_dashboard(result)
 
             except Exception as e:
                 st.error(f"Evaluation failed: {e}")
+
+st.divider()
+
+st.caption(
+    "Credit Risk Investigation Platform | AI + ML + RAG + Multi-Agent System"
+)
