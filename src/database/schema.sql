@@ -78,3 +78,10 @@ CREATE TABLE loan_applications (
         REFERENCES customers(customer_id)
 );
 GO
+
+SELECT * FROM customers WHERE phone_number = '7019883440';
+
+
+CREATE UNIQUE INDEX UX_aadhaar_synthetic
+ON customers(aadhaar_synthetic)
+WHERE aadhaar_synthetic IS NOT NULL;
