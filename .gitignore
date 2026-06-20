@@ -1,0 +1,16 @@
+.env
+venv/
+
+*.pkl
+
+index/
+
+dataset/
+
+ml/models/*
+
+__pycache__/
+.DS_Store
+
+notebooks/
+.ipynb_checkpoints/
