@@ -123,13 +123,69 @@ class CreditInvestigationEngine:
             policy_context = None
 
         # =========================
+        # DECISION metrics
+        # =========================
+        cibil_score = int(df["cibil_score"].iloc[0])
+
+        default_count = int(
+            df["default_history_count"].iloc[0]
+        )
+
+        debt_ratio = float(
+            df["debt_to_income_ratio"].iloc[0]
+        )
+
+        loan_amount = float(
+            df["loan_amount"].iloc[0]
+        )
+
+        annual_income = float(
+            df["annual_household_income"].iloc[0]
+        )
+
+        # =========================
         # DECISION LOGIC
         # =========================
-        if approval == "REJECTED":
+
+        conditions = []
+
+        # Hard rejection rules
+        if (
+            approval_prob < 0.50
+            or default_prob >= 0.80
+            or cibil_score < 550
+            or default_count >= 3
+        ):
             final_decision = "REJECTED"
 
-        elif risk_level == "HIGH":
+        # Conditional approval rules
+        elif (
+            default_prob >= 0.40
+            or risk_level == "HIGH"
+            or cibil_score < 700
+            or debt_ratio > 0.40
+        ):
             final_decision = "CONDITIONAL_APPROVAL"
+
+            if cibil_score < 700:
+                conditions.append(
+                    "Additional guarantor required"
+                )
+
+            if debt_ratio > 0.40:
+                conditions.append(
+                    "Reduce existing debt obligations"
+                )
+
+            if default_count > 0:
+                conditions.append(
+                    "Manual credit officer review required"
+                )
+
+            if loan_amount > annual_income:
+                conditions.append(
+                    "Additional income proof required"
+                )
 
         else:
             final_decision = "APPROVED"
@@ -203,6 +259,7 @@ class CreditInvestigationEngine:
             "risk_level": risk_level,
 
             "final_decision": final_decision,
+            "conditions": conditions,
 
             "approval_analysis": approval_text,
             "risk_analysis": risk_text,
