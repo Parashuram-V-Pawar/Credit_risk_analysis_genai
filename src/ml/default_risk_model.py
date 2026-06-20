@@ -14,9 +14,7 @@ get_approval_model_features
 )
 
 # =========================
-
 # LOAD DATA
-
 # =========================
 
 df = load_loan_approval_training_data()
@@ -26,9 +24,7 @@ df = load_loan_approval_training_data()
 df = create_features(df)
 
 # =========================
-
 # TARGET
-
 # =========================
 
 df["default_flag"] = (
@@ -38,9 +34,7 @@ df["default_history_count"] > 0
 y = df["default_flag"]
 
 # =========================
-
 # FEATURES
-
 # =========================
 
 features = get_approval_model_features()
@@ -64,9 +58,7 @@ print("\nTarget Distribution:")
 print(y.value_counts())
 
 # =========================
-
 # CATEGORICAL FEATURES
-
 # =========================
 
 categorical_features = [
@@ -87,9 +79,7 @@ if col in X.columns
 ]
 
 # =========================
-
 # NUMERICAL FEATURES
-
 # =========================
 
 numerical_features = [
@@ -98,9 +88,7 @@ if col not in categorical_features
 ]
 
 # =========================
-
 # PREPROCESSOR
-
 # =========================
 
 preprocessor = ColumnTransformer(
@@ -119,9 +107,7 @@ numerical_features
 )
 
 # =========================
-
 # TRAIN TEST SPLIT
-
 # =========================
 
 X_train, X_test, y_train, y_test = train_test_split(
@@ -133,9 +119,7 @@ stratify=y
 )
 
 # =========================
-
 # CLASS IMBALANCE
-
 # =========================
 
 scale_pos_weight = (
@@ -145,9 +129,7 @@ max(len(y_train[y_train == 1]), 1)
 )
 
 # =========================
-
 # MODEL
-
 # =========================
 
 model = RandomForestClassifier(
@@ -159,9 +141,7 @@ model = RandomForestClassifier(
 )
 
 # =========================
-
 # PIPELINE
-
 # =========================
 
 pipeline = Pipeline([
@@ -170,26 +150,20 @@ pipeline = Pipeline([
 ])
 
 # =========================
-
 # TRAIN
-
 # =========================
 
 pipeline.fit(X_train, y_train)
 
 # =========================
-
 # PREDICT
-
 # =========================
 
 y_pred = pipeline.predict(X_test)
 y_proba = pipeline.predict_proba(X_test)[:, 1]
 
 # =========================
-
 # EVALUATION
-
 # =========================
 
 print("\nClassification Report:")
@@ -202,9 +176,7 @@ print("\nROC-AUC Score:")
 print(roc_auc_score(y_test, y_proba))
 
 # =========================
-
 # SAVE MODEL
-
 # =========================
 
 joblib.dump(
